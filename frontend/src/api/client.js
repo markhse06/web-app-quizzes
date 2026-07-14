@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+const API_URL = import.meta.env.VITE_API_URL ?? ''
 
 const ACCESS_TOKEN_KEY = 'access_token'
 const REFRESH_TOKEN_KEY = 'refresh_token'
@@ -24,6 +24,14 @@ export function hasAccessToken() {
   return Boolean(localStorage.getItem(ACCESS_TOKEN_KEY))
 }
 
+export function getAccessToken() {
+	return localStorage.getItem(ACCESS_TOKEN_KEY)
+}
+
+export function getApiUrl() {
+	return API_URL || window.location.origin
+}
+
 async function refreshAccessToken() {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
   if (!refreshToken) return false
@@ -43,7 +51,9 @@ export async function apiRequest(path, options = {}, retryAfterRefresh = true) {
   const headers = new Headers(options.headers)
   const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
-  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers })
   if (response.status === 401 && retryAfterRefresh && await refreshAccessToken()) {

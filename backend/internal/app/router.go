@@ -17,6 +17,7 @@ func (a *App) registerRoutes() {
 			user.POST("/login", a.handleUserLogin)
 			user.POST("refresh_token", a.handleRefreshToken)
 		}
+		api.POST("/auth/refresh", a.handleRefreshToken)
 
 		quizzes := api.Group("/quizzes")
 		quizzes.Use(a.AuthMiddleware())

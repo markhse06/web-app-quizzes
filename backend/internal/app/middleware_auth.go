@@ -1,11 +1,13 @@
 package app
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func (a *App) AuthMiddleware() gin.HandlerFunc {
@@ -26,38 +28,38 @@ func (a *App) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		tokenStr := parts[1]
-
-		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return jwtSecret, nil
-		})
-		if err != nil || !token.Valid {
+		userID, err := accessTokenUserID(parts[1])
+		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "invalid or expired token",
 			})
 			return
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid token claims",
-			})
-			return
-		}
-
-		sub, ok := claims["sub"].(string)
-		if !ok || sub == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid subject in token",
-			})
-			return
-		}
-
-		c.Set("user_id", sub)
+		c.Set("user_id", userID.String())
 		c.Next()
 	}
+}
+
+func accessTokenUserID(tokenStr string) (uuid.UUID, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		return uuid.Nil, errors.New("invalid or expired token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return uuid.Nil, errors.New("invalid token claims")
+	}
+
+	sub, ok := claims["sub"].(string)
+	if !ok || sub == "" {
+		return uuid.Nil, errors.New("invalid subject in token")
+	}
+	return uuid.Parse(sub)
 }

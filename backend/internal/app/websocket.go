@@ -159,13 +159,31 @@ func (a *App) handleJoinWebSocket(c *gin.Context) {
 		return
 	}
 
+	isHost := strings.EqualFold(name, "host")
+	if isHost {
+		userID, err := accessTokenUserID(accessTokenFromWebSocketProtocols(c.Request))
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "a valid access token is required for the host"})
+			return
+		}
+
+		var session domain.GameSession
+		if err := a.db.Preload("Quiz").First(&session, room.SessionID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "game session not found"})
+			return
+		}
+		if session.Quiz.CreatorID != userID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "only the quiz creator can host this session"})
+			return
+		}
+	}
+
 	connection, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		a.logger.Error("failed to upgrade websocket", "error", err)
 		return
 	}
 
-	isHost := strings.EqualFold(name, "host")
 	var participant *domain.Participant
 	if !isHost {
 		newParticipant := domain.Participant{SessionID: room.SessionID, Name: name}
@@ -211,6 +229,16 @@ func (a *App) handleJoinWebSocket(c *gin.Context) {
 			}
 		}
 	}
+}
+
+func accessTokenFromWebSocketProtocols(request *http.Request) string {
+	protocols := websocket.Subprotocols(request)
+	for i := 0; i+1 < len(protocols); i++ {
+		if protocols[i] == "access_token" {
+			return protocols[i+1]
+		}
+	}
+	return ""
 }
 
 func (a *App) broadcastLobby(room *Room) {

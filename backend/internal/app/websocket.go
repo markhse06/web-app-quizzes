@@ -193,6 +193,10 @@ func (a *App) handleJoinWebSocket(c *gin.Context) {
 			return
 		}
 		participant = &newParticipant
+		if err := connection.WriteJSON(gin.H{"type": "joined", "participant": playerView{ID: participant.ID, Name: participant.Name, Score: participant.Score}}); err != nil {
+			_ = connection.Close()
+			return
+		}
 	}
 
 	room.addConnection(connection, participant, isHost)
@@ -306,6 +310,7 @@ func (a *App) broadcastQuestion(room *Room) {
 		return
 	}
 	question := room.questions[room.currentQuestionIndex]
+	durationSeconds := int(room.questionDuration.Seconds())
 	room.mu.RUnlock()
 
 	answers := make([]answerView, 0, len(question.Answers))
@@ -314,7 +319,7 @@ func (a *App) broadcastQuestion(room *Room) {
 	}
 	room.Broadcast(gin.H{"type": "question", "question": questionView{
 		ID: question.ID, Type: question.Type, Content: question.Content, ImagePath: question.ImagePath, Answers: answers,
-	}})
+	}, "duration_seconds": durationSeconds})
 }
 
 func (a *App) submitAnswer(room *Room, participant domain.Participant, answerIDs []string) {
@@ -367,6 +372,10 @@ func (a *App) finishQuestion(room *Room) {
 
 	correctAnswerIDs := make(map[uuid.UUID]bool)
 	correctAnswerIDList := make([]uuid.UUID, 0)
+	answerCounts := make(map[uuid.UUID]int, len(question.Answers))
+	for _, answer := range question.Answers {
+		answerCounts[answer.ID] = 0
+	}
 	for _, answer := range question.Answers {
 		if answer.IsCorrect {
 			correctAnswerIDs[answer.ID] = true
@@ -387,6 +396,7 @@ func (a *App) finishQuestion(room *Room) {
 			selected := make(map[uuid.UUID]bool, len(submitted))
 			for _, answer := range submitted {
 				selected[answer.AnswerID] = true
+				answerCounts[answer.AnswerID]++
 			}
 			if len(selected) == len(correctAnswerIDs) {
 				isCorrect := true
@@ -415,7 +425,7 @@ func (a *App) finishQuestion(room *Room) {
 		a.logger.Error("failed to load leaderboard", "error", err, "session_id", room.SessionID)
 		return
 	}
-	room.Broadcast(gin.H{"type": "question_result", "correct_answer_ids": correctAnswerIDList, "leaderboard": leaderboard})
+	room.Broadcast(gin.H{"type": "question_result", "correct_answer_ids": correctAnswerIDList, "answer_counts": answerCounts, "leaderboard": leaderboard})
 }
 
 func (a *App) nextQuestion(room *Room) {

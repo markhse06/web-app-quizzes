@@ -67,9 +67,10 @@ func (a *App) handleCreateQuiz(c *gin.Context) {
 
 		for _, questionRequest := range req.Questions {
 			question := domain.Question{
-				QuizID:  quiz.ID,
-				Type:    questionRequest.Type,
-				Content: questionRequest.Content,
+				QuizID:    quiz.ID,
+				Type:      questionRequest.Type,
+				Content:   questionRequest.Content,
+				ImagePath: questionRequest.ImagePath,
 			}
 			if err := tx.Create(&question).Error; err != nil {
 				return err

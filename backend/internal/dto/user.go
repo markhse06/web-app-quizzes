@@ -32,9 +32,10 @@ type CreateQuizRequest struct {
 }
 
 type CreateQuestion struct {
-	Content string         `json:"content" binding:"required"`
-	Type    string         `json:"type" binding:"required,oneof=single multiple"`
-	Answers []CreateAnswer `json:"answers" binding:"required,min=1"`
+	Content   string         `json:"content" binding:"required"`
+	Type      string         `json:"type" binding:"required,oneof=single multiple"`
+	ImagePath string         `json:"image_path"`
+	Answers   []CreateAnswer `json:"answers" binding:"required,min=1"`
 }
 
 type CreateAnswer struct {

@@ -10,6 +10,7 @@ import (
 type GameSession struct {
 	ID           uuid.UUID     `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
 	QuizID       uuid.UUID     `gorm:"not null"`
+	Quiz         Quiz          `gorm:"foreignKey:QuizID"`
 	PinCode      string        `gorm:"unique;not null"`
 	Status       string        `gorm:"not null;default:'waiting'"` // "waiting", "playing", "finished"
 	Participants []Participant `gorm:"foreignKey:SessionID"`

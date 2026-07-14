@@ -14,6 +14,7 @@ type App struct {
 	router *gin.Engine
 	db     *db.DB
 	logger *slog.Logger
+	hub    *Hub
 }
 
 func NewApp() (*App, error) {
@@ -33,6 +34,7 @@ func NewApp() (*App, error) {
 		router: r,
 		db:     database,
 		logger: logger,
+		hub:    NewHub(),
 	}
 
 	a.registerRoutes()

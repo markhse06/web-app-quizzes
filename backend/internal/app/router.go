@@ -28,5 +28,8 @@ func (a *App) registerRoutes() {
 		}
 
 		api.POST("/upload", a.AuthMiddleware(), a.handleUpload)
+		api.POST("/sessions", a.AuthMiddleware(), a.handleCreateSession)
 	}
+
+	a.router.GET("/ws/join", a.handleJoinWebSocket)
 }
